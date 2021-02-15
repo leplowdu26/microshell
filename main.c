@@ -138,13 +138,6 @@ t_cmd *cmd_leaf(char ***pav)
 	return cmd;
 }
 
-t_cmd *cmd_branch(t_cmd *l, char ***pav)
-{
-	char **av = *pav;
-	*pav = &av[1];
-	return cmd_new(PIPE, l, cmd_leaf(pav));
-}
-
 t_cmd *cmd_create(char ***pav)
 {
 	t_cmd *cmd;
@@ -152,8 +145,9 @@ t_cmd *cmd_create(char ***pav)
 	cmd = cmd_leaf(pav);
 	while (**pav && !strcmp(**pav, "|"))
 	{
-		if (**pav + 1 && strcmp(**pav + 1, "|"))
-			cmd = cmd_branch(cmd, pav);
+		(*pav)++;
+		if (**pav && strcmp(**pav, "|"))
+			cmd = cmd_new(PIPE, cmd, cmd_leaf(pav));
 	}
 	return cmd;
 }
@@ -170,7 +164,7 @@ int main(int ac, char **av, char **env)
 	{
 		if (!strcmp(*av, ";"))
 		{
-			av = &av[1];
+			av++;
 			continue ;
 		}
 		cmd = cmd_create(&av);
