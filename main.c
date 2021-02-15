@@ -25,8 +25,8 @@ void free_cmd(t_cmd *cmd)
 		free(cmd->c);
 	}
 	else{
-		free(cmd->l);
-		free(cmd->r);
+		free_cmd(cmd->l);
+		free_cmd(cmd->r);
 	}
 	free(cmd);
 }
@@ -77,21 +77,25 @@ void exe_pipe(t_cmd *cmd, char **env)
 void exe_cmd(char **av, char **env)
 {
 	pid_t pid;
+	int ret;
 	
-	if (!strcmp(*av, "cd"))
+	if (*av)
 	{
-		ft_cd(av);
-		return ;
+		if (!strcmp(*av, "cd"))
+		{
+			ft_cd(av);
+			return ;
+		}
+		if ((pid = fork()) < 0 )
+			str_error(NULL, NULL);
+		else if (pid == 0)
+		{
+			ret = execve(*av, av, env);
+			str_error("error: cannot execute ", *av);
+			exit(ret);
+		}
+		waitpid(pid, NULL, 0);
 	}
-	if ((pid = fork()) < 0 )
-		str_error(NULL, NULL);
-	else if (pid == 0)
-	{
-		execve(*av, av, env);
-		str_error("error: cannot execute ", *av);
-		exit(1);
-	}
-	waitpid(pid, NULL, 0);
 }
 
 void exe(t_cmd *cmd, char **env)
@@ -147,14 +151,20 @@ t_cmd *cmd_create(char ***pav)
 	
 	cmd = cmd_leaf(pav);
 	while (**pav && !strcmp(**pav, "|"))
-		cmd = cmd_branch(cmd, pav);
+	{
+		if (**pav + 1 && strcmp(**pav + 1, "|"))
+			cmd = cmd_branch(cmd, pav);
+	}
 	return cmd;
 }
 
 int main(int ac, char **av, char **env)
 {
-	(void)ac, av = &av[1];
+	av = &av[1];
 	t_cmd *cmd;
+	
+	if (ac == 1)
+		return 1;
 	
 	while(*av)
 	{
